@@ -1523,16 +1523,13 @@ void ArchDesc::declareClasses(FILE *fp) {
   declare_pipe_classes(fp);
 
   // Generate Machine Classes for each instruction defined in AD file
-  fprintf(fp,"\n");
-  fprintf(fp,"//----------------------------Declare classes derived from MachNode----------\n");
+  fprintf(fp,"\n//----------------------------Declare classes derived from MachNode----------\n\n");
   _instructions.reset();
-  InstructForm *instr;
-  for( ; (instr = (InstructForm*)_instructions.iter()) != NULL; ) {
+  for(InstructForm *instr = nullptr; (instr = (InstructForm*)_instructions.iter()) != nullptr;) {
     // Ensure this is a machine-world instruction
     if ( instr->ideal_only() ) continue;
 
     // Build class definition for this instruction
-    fprintf(fp,"\n");
     fprintf(fp,"class %sNode : public %s { \n",
             instr->_ident, instr->mach_base_class(_globalNames) );
     fprintf(fp,"private:\n");
@@ -1995,8 +1992,26 @@ void ArchDesc::declareClasses(FILE *fp) {
     fprintf(fp, "#endif\n");
 
     // Close definition of this XxxMachNode
-    fprintf(fp,"};\n");
-  };
+    fprintf(fp,"};\n\n");
+
+    // Stub attached to this node
+    if (instr->_stubencode == nullptr) {
+      continue;
+    }
+    assert(instr->_stubmaxsize != nullptr, "missing stub_max_size in instruction");
+
+    fprintf(fp, "class %sStub : public C2CodeStub {\n", instr->_ident);
+    fprintf(fp, "private:\n");
+    fprintf(fp, "  const %sNode* _node;\n", instr->_ident);
+    fprintf(fp, "  PhaseRegAlloc* ra_;\n");
+    fprintf(fp, "public:\n");
+    fprintf(fp, "  %sStub(const %sNode* node, PhaseRegAlloc* ra) : _node(node), ra_(ra) {}\n",
+            instr->_ident, instr->_ident);
+    fprintf(fp, "  MachOper *opnd_array(uint index) const { return _node->opnd_array(index); }\n");
+    fprintf(fp, "  int max_size() const { return %s; }\n", instr->_stubmaxsize);
+    fprintf(fp, "  void emit(C2_MacroAssembler& masm);\n");
+    fprintf(fp, "};\n\n");
+  } // End of InstructForm iteration
 
 }
 

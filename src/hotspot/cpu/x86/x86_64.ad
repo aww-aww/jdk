@@ -11022,7 +11022,19 @@ instruct convF2I_reg_reg(rRegI dst, regF src, rFlagsReg cr)
   effect(KILL cr);
   format %{ "convert_f2i $dst,$src" %}
   ins_encode %{
-    __ convert_f2i($dst$$Register, $src$$XMMRegister);
+    __ cvttss2sil($dst$$Register, $src$$XMMRegister);
+    __ cmpl($dst$$Register, 0x80000000);
+    __ jcc(Assembler::equal, stub->entry());
+    __ bind(stub->continuation());
+  %}
+  stub_max_size(23);
+  stub_encode %{
+    __ bind(entry());
+    __ subptr(rsp, 8);
+    __ movflt(Address(rsp), $src$$XMMRegister);
+    __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, StubRoutines::x86::f2i_fixup())));
+    __ pop($dst$$Register);
+    __ jmp(continuation());
   %}
   ins_pipe(pipe_slow);
 %}
@@ -11033,7 +11045,19 @@ instruct convF2L_reg_reg(rRegL dst, regF src, rFlagsReg cr)
   effect(KILL cr);
   format %{ "convert_f2l $dst,$src"%}
   ins_encode %{
-    __ convert_f2l($dst$$Register, $src$$XMMRegister);
+    __ cvttss2siq($dst$$Register, $src$$XMMRegister);
+    __ cmp64($dst$$Register, ExternalAddress((address) StubRoutines::x86::double_sign_flip()));
+    __ jcc(Assembler::equal, stub->entry());
+    __ bind(stub->continuation());
+  %}
+  stub_max_size(23);
+  stub_encode %{
+    __ bind(entry());
+    __ subptr(rsp, 8);
+    __ movflt(Address(rsp), $src$$XMMRegister);
+    __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, StubRoutines::x86::f2l_fixup())));
+    __ pop($dst$$Register);
+    __ jmp(continuation());
   %}
   ins_pipe(pipe_slow);
 %}
@@ -11044,7 +11068,19 @@ instruct convD2I_reg_reg(rRegI dst, regD src, rFlagsReg cr)
   effect(KILL cr);
   format %{ "convert_d2i $dst,$src"%}
   ins_encode %{
-    __ convert_d2i($dst$$Register, $src$$XMMRegister);
+    __ cvttsd2sil($dst$$Register, $src$$XMMRegister);
+    __ cmpl($dst$$Register, 0x80000000);
+    __ jcc(Assembler::equal, stub->entry());
+    __ bind(stub->continuation());
+  %}
+  stub_max_size(23);
+  stub_encode %{
+    __ bind(entry());
+    __ subptr(rsp, 8);
+    __ movdbl(Address(rsp), $src$$XMMRegister);
+    __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, StubRoutines::x86::d2i_fixup())));
+    __ pop($dst$$Register);
+    __ jmp(continuation());
   %}
   ins_pipe(pipe_slow);
 %}
@@ -11055,7 +11091,19 @@ instruct convD2L_reg_reg(rRegL dst, regD src, rFlagsReg cr)
   effect(KILL cr);
   format %{ "convert_d2l $dst,$src"%}
   ins_encode %{
-    __ convert_d2l($dst$$Register, $src$$XMMRegister);
+    __ cvttsd2siq($dst$$Register, $src$$XMMRegister);
+    __ cmp64($dst$$Register, ExternalAddress((address) StubRoutines::x86::double_sign_flip()));
+    __ jcc(Assembler::equal, stub->entry());
+    __ bind(stub->continuation());
+  %}
+  stub_max_size(23);
+  stub_encode %{
+    __ bind(entry());
+    __ subptr(rsp, 8);
+    __ movdbl(Address(rsp), $src$$XMMRegister);
+    __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, StubRoutines::x86::d2l_fixup())));
+    __ pop($dst$$Register);
+    __ jmp(continuation());
   %}
   ins_pipe(pipe_slow);
 %}

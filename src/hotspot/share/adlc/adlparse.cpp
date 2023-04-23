@@ -224,10 +224,12 @@ void ADLParser::instr_parse(void) {
       parse_err(SYNERR, "Instructions specify ins_encode, not encode\n");
     }
     else if (!strcmp(ident, "ins_encode"))       ins_encode_parse(*instr);
+    else if (!strcmp(ident, "stub_encode"))      stub_encode_parse(*instr);
     // Parse late expand keyword.
     else if (!strcmp(ident, "postalloc_expand")) postalloc_expand_parse(*instr);
     else if (!strcmp(ident, "opcode"))           instr->_opcode    = opcode_parse(instr);
-    else if (!strcmp(ident, "size"))             instr->_size      = size_parse(instr);
+    else if (!strcmp(ident, "size"))             instr->_size      = size_parse();
+    else if (!strcmp(ident, "stub_max_size"))    instr->_stubmaxsize = size_parse();
     else if (!strcmp(ident, "effect"))           effect_parse(instr);
     else if (!strcmp(ident, "expand"))           instr->_exprule   = expand_parse(instr);
     else if (!strcmp(ident, "rewrite"))          instr->_rewrule   = rewrite_parse();
@@ -2873,10 +2875,9 @@ Predicate *ADLParser::pred_parse(void) {
 
 //------------------------------ins_encode_parse_block-------------------------
 // Parse the block form of ins_encode.  See ins_encode_parse for more details
-void ADLParser::ins_encode_parse_block(InstructForm& inst) {
+InsEncode* ADLParser::ins_encode_parse_block(InstructForm& inst, const char* prefix, const char* prefix_code) {
   // Create a new encoding name based on the name of the instruction
   // definition, which should be unique.
-  const char* prefix = "__ins_encode_";
   const size_t ec_name_size = strlen(inst._ident) + strlen(prefix) + 1;
   char* ec_name = (char*) AdlAllocateHeap(ec_name_size);
   snprintf_checked(ec_name, ec_name_size, "%s%s", prefix, inst._ident);
@@ -2895,12 +2896,12 @@ void ADLParser::ins_encode_parse_block(InstructForm& inst) {
     encoding->add_parameter(opForm->_ident, param);
   }
 
-  if (!inst._is_postalloc_expand) {
+  if (prefix_code != nullptr) {
     // Define a MacroAssembler instance for use by the encoding.  The
     // name is chosen to match the __ idiom used for assembly in other
     // parts of hotspot and assumes the existence of the standard
     // #define __ _masm.
-    encoding->add_code("    C2_MacroAssembler _masm(&cbuf);\n");
+    encoding->add_code(prefix_code);
   }
 
   // Parse the following %{ }% block
@@ -2915,15 +2916,7 @@ void ADLParser::ins_encode_parse_block(InstructForm& inst) {
     params->add_entry(param);
   }
 
-  // Check for duplicate ins_encode sections after parsing the block
-  // so that parsing can continue and find any other errors.
-  if (inst._insencode != NULL) {
-    parse_err(SYNERR, "Multiple ins_encode sections defined\n");
-    return;
-  }
-
-  // Set encode class of this instruction.
-  inst._insencode = encrule;
+  return encrule;
 }
 
 
@@ -3038,7 +3031,17 @@ void ADLParser::ins_encode_parse(InstructForm& inst) {
       next_char();                      // Skip '{'
 
       // Parse the block form of ins_encode
-      ins_encode_parse_block(inst);
+      InsEncode* encrule = ins_encode_parse_block(inst, "__ins_encode",
+                                                  "    C2_MacroAssembler _masm(&cbuf);\n");
+      // Check for duplicate ins_encode sections after parsing the block
+      // so that parsing can continue and find any other errors.
+      if (inst._insencode != nullptr) {
+        parse_err(SYNERR, "Multiple ins_encode sections defined\n");
+        return;
+      }
+
+      // Set encode class of this instruction.
+      inst._insencode = encrule;
       return;
     }
 
@@ -3188,6 +3191,28 @@ void ADLParser::ins_encode_parse(InstructForm& inst) {
   inst._insencode = encrule;
 }
 
+//------------------------------stub_encode_parse------------------------------
+// Encode rules have the form
+//   stub_encode %{
+//      ... // body
+//   %}
+void ADLParser::stub_encode_parse(InstructForm& inst) {
+  skipws();                        // Skip whitespace
+  if ((_curchar != '%') || (*(_ptr+1) != '{')) {
+    parse_err(SYNERR, "missing '%%{' in stub_encode definition\n");
+  }
+
+  next_char();                      // Skip '%'
+  next_char();                      // Skip '{'
+
+  InsEncode* encrule = ins_encode_parse_block(inst, "__stub_encode", nullptr);
+  if (inst._stubencode != nullptr) {
+    parse_err(SYNERR, "Multiple stub_encode sections defined\n");
+    return;
+  }
+  inst._stubencode = encrule;
+}
+
 //------------------------------postalloc_expand_parse---------------------------
 // Encode rules have the form
 //   postalloc_expand( encode_class_name(parameter_list) );
@@ -3208,7 +3233,16 @@ void ADLParser::postalloc_expand_parse(InstructForm& inst) {
       next_char();                      // Skip '{'
 
       // Parse the block form of postalloc_expand
-      ins_encode_parse_block(inst);
+      InsEncode* encrule = ins_encode_parse_block(inst, "__ins_encode", nullptr);
+      // Check for duplicate ins_encode sections after parsing the block
+      // so that parsing can continue and find any other errors.
+      if (inst._insencode != NULL) {
+        parse_err(SYNERR, "Multiple ins_encode sections defined\n");
+        return;
+      }
+
+      // Set encode class of this instruction.
+      inst._insencode = encrule;
       return;
     }
 
@@ -3455,7 +3489,7 @@ void ADLParser::constant_parse_expression(EncClass* encoding, char* ec_name) {
 // Parse a 'size(<expr>)' attribute which specifies the size of the
 // emitted instructions in bytes. <expr> can be a C++ expression,
 // e.g. a constant.
-char* ADLParser::size_parse(InstructForm *instr) {
+char* ADLParser::size_parse() {
   char* sizeOfInstr = NULL;
 
   // Get value of the instruction's size

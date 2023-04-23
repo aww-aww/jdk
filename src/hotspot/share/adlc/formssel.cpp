@@ -38,13 +38,14 @@ InstructForm::InstructForm(const char *id, bool ideal_only)
     _has_call(false)
 {
       _ftype = Form::INS;
-
       _matrule              = NULL;
       _insencode            = NULL;
       _constant             = NULL;
       _is_postalloc_expand  = false;
       _opcode               = NULL;
       _size                 = NULL;
+      _stubmaxsize          = NULL;
+      _stubencode           = NULL;
       _attribs              = NULL;
       _predicate            = NULL;
       _exprule              = NULL;
@@ -79,6 +80,8 @@ InstructForm::InstructForm(const char *id, InstructForm *instr, MatchRule *rule)
       _is_postalloc_expand   = instr->_is_postalloc_expand;
       _opcode                = instr->_opcode;
       _size                  = instr->_size;
+      _stubmaxsize           = instr->_stubmaxsize;
+      _stubencode            = instr->_stubencode;
       _attribs               = instr->_attribs;
       _predicate             = instr->_predicate;
       _exprule               = instr->_exprule;

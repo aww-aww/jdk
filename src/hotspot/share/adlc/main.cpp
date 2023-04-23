@@ -237,6 +237,8 @@ int main(int argc, char *argv[])
   AD.addInclude(AD._HPP_file, "memory/allocation.hpp");
   AD.addInclude(AD._HPP_file, "oops/compressedOops.hpp");
   AD.addInclude(AD._HPP_file, "code/nativeInst.hpp");
+  AD.addInclude(AD._HPP_file, "opto/c2_CodeStubs.hpp");
+  AD.addInclude(AD._HPP_file, "opto/c2_MacroAssembler.hpp");
   AD.addInclude(AD._HPP_file, "opto/output.hpp");
   AD.addInclude(AD._HPP_file, "opto/machnode.hpp");
   AD.addInclude(AD._HPP_file, "opto/node.hpp");

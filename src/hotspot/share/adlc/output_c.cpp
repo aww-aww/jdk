@@ -1892,6 +1892,7 @@ private:
   OpClassForm  *_opclass;
   OperandForm  *_operand;
   int           _operand_idx;
+  const char   *_current_node;
   const char   *_local_name;
   const char   *_operand_name;
   bool          _doing_disp;
@@ -1920,8 +1921,9 @@ private:
 
 public:
   DefineEmitState(FILE *fp, ArchDesc &AD, EncClass &encoding,
-                  InsEncode &ins_encode, InstructForm &inst)
-    : _AD(AD), _fp(fp), _encoding(encoding), _ins_encode(ins_encode), _inst(inst) {
+                  InsEncode &ins_encode, InstructForm &inst, const char* current_node)
+    : _AD(AD), _fp(fp), _encoding(encoding), _ins_encode(ins_encode),
+      _inst(inst), _current_node(current_node) {
       clear();
   }
 
@@ -2201,11 +2203,11 @@ public:
           fprintf(_fp, "Address::make_raw(");
 
           emit_rep_var( rep_var );
-          fprintf(_fp,"->base(ra_,this,idx%d), ", _operand_idx);
+          fprintf(_fp,"->base(ra_,%s,idx%d), ", _current_node, _operand_idx);
 
           _reg_status = LITERAL_ACCESSED;
           emit_rep_var( rep_var );
-          fprintf(_fp,"->index(ra_,this,idx%d), ", _operand_idx);
+          fprintf(_fp,"->index(ra_,%s,idx%d), ", _current_node, _operand_idx);
 
           _reg_status = LITERAL_ACCESSED;
           emit_rep_var( rep_var );
@@ -2215,9 +2217,9 @@ public:
           emit_rep_var( rep_var );
           Form::DataType stack_type = _operand ? _operand->is_user_name_for_sReg() : Form::none;
           if( _operand  && _operand_idx==0 && stack_type != Form::none ) {
-            fprintf(_fp,"->disp(ra_,this,0), ");
+            fprintf(_fp,"->disp(ra_,%s,0), ", _current_node);
           } else {
-            fprintf(_fp,"->disp(ra_,this,idx%d), ", _operand_idx);
+            fprintf(_fp,"->disp(ra_,%s,idx%d), ", _current_node, _operand_idx);
           }
 
           _reg_status = LITERAL_ACCESSED;
@@ -2357,7 +2359,7 @@ private:
             fprintf(_fp, "%s_enc", first->_regname);
           }
         } else {
-          fprintf(_fp,"->%s(ra_,this", reg_convert != NULL ? reg_convert : "reg");
+          fprintf(_fp,"->%s(ra_,%s", reg_convert != NULL ? reg_convert : "reg", _current_node);
           // Add parameter for index position, if not result operand
           if( _operand_idx != 0 ) fprintf(_fp,",idx%d", _operand_idx);
           fprintf(_fp,")");
@@ -2372,13 +2374,13 @@ private:
       assert( _operand_idx != -1,
               "Must use this subfield after operand");
       assert( ! _may_reloc, "UnImplemented()");
-      fprintf(_fp,"->base(ra_,this,idx%d)", _operand_idx);
+      fprintf(_fp,"->base(ra_,%s,idx%d)", _current_node, _operand_idx);
     }
     else if ( strcmp(rep_var,"$index") == 0 ) {
       assert( _operand_idx != -1,
               "Must use this subfield after operand");
       assert( ! _may_reloc, "UnImplemented()");
-      fprintf(_fp,"->index(ra_,this,idx%d)", _operand_idx);
+      fprintf(_fp,"->index(ra_,%s,idx%d)", _current_node, _operand_idx);
     }
     else if ( strcmp(rep_var,"$scale") == 0 ) {
       assert( ! _may_reloc, "UnImplemented()");
@@ -2407,9 +2409,9 @@ private:
     else if ( strcmp(rep_var,"$disp") == 0 ) {
       Form::DataType stack_type = _operand ? _operand->is_user_name_for_sReg() : Form::none;
       if( _operand  && _operand_idx==0 && stack_type != Form::none ) {
-        fprintf(_fp,"->disp(ra_,this,0)");
+        fprintf(_fp,"->disp(ra_,%s,0)", _current_node);
       } else {
-        fprintf(_fp,"->disp(ra_,this,idx%d)", _operand_idx);
+        fprintf(_fp,"->disp(ra_,%s,idx%d)", _current_node, _operand_idx);
       }
     }
     else if ( strcmp(rep_var,"$label") == 0 ) {
@@ -2607,7 +2609,7 @@ void ArchDesc::define_postalloc_expand(FILE *fp, InstructForm &inst) {
   const char *ec_rep_var = NULL;
   assert(encoding == _encode->encClass(ec_name), "");
 
-  DefineEmitState pending(fp, *this, *encoding, *ins_encode, inst);
+  DefineEmitState pending(fp, *this, *encoding, *ins_encode, inst, "this");
   encoding->_code.reset();
   encoding->_rep_vars.reset();
   // Process list of user-defined strings,
@@ -2662,6 +2664,14 @@ void ArchDesc::defineEmit(FILE* fp, InstructForm& inst) {
     fprintf(fp, "  ra_->C->output()->constant_table().fill_jump_table(cbuf, (MachConstantNode*) this, _index2label);\n");
   }
 
+  if (inst._stubencode != nullptr) {
+    fprintf(fp, "  %sStub* stub = new (Compile::current()->comp_arena()) %sStub(this, ra_);\n",
+            inst._ident, inst._ident);
+    fprintf(fp, "  if (!Compile::current()->output()->in_scratch_emit_size()) {\n");
+    fprintf(fp, "    Compile::current()->output()->add_stub(stub);\n");
+    fprintf(fp, "  }\n");
+  }
+
   // Output each operand's offset into the array of registers.
   inst.index_temps(fp, _globalNames);
 
@@ -2688,7 +2698,7 @@ void ArchDesc::defineEmit(FILE* fp, InstructForm& inst) {
                            ec_name, encoding->num_args());
     }
 
-    DefineEmitState pending(fp, *this, *encoding, *encode, inst);
+    DefineEmitState pending(fp, *this, *encoding, *encode, inst, "this");
     encoding->_code.reset();
     encoding->_rep_vars.reset();
     // Process list of user-defined strings,
@@ -2721,6 +2731,51 @@ void ArchDesc::defineEmit(FILE* fp, InstructForm& inst) {
 
   // (3) and (4)
   fprintf(fp, "}\n\n");
+}
+
+void ArchDesc::defineStubEmit(FILE* fp, InstructForm& inst) {
+  InsEncode* encode = inst._stubencode;
+  if (encode == nullptr) {
+    return;
+  }
+
+  fprintf(fp, "void %sStub::emit(C2_MacroAssembler& _masm) {\n", inst._ident);
+  inst.index_temps(fp, _globalNames);
+  encode->reset();
+  const char* ec_name = encode->encode_class_iter();
+  assert(ec_name != nullptr && _encode != nullptr, "stub_encode missing body");
+
+  EncClass* encoding = _encode->encClass(ec_name);
+  assert(encoding != nullptr, "");
+
+  DefineEmitState pending(fp, *this, *encoding, *encode, inst, "_node");
+  encoding->_code.reset();
+  encoding->_rep_vars.reset();
+  // Process list of user-defined strings,
+  // and occurrences of replacement variables.
+  // Replacement Vars are pushed into a list and then output
+  const char* ec_code = nullptr;
+  const char* ec_rep_var = nullptr;
+  while ((ec_code = encoding->_code.iter()) != NULL) {
+    if (!encoding->_code.is_signal(ec_code)) {
+      // Emit pending code
+      pending.emit();
+      pending.clear();
+      // Emit this code section
+      fprintf(fp, "%s", ec_code);
+    } else {
+      // A replacement variable or one of its subfields
+      // Obtain replacement variable from list
+      ec_rep_var  = encoding->_rep_vars.iter();
+      pending.add_rep_var(ec_rep_var);
+    }
+  }
+  // Emit pending code
+  pending.emit();
+  pending.clear();
+  fprintf(fp, "}\n\n");
+  assert(encode->encode_class_iter() == nullptr,
+         "stub_encode should only have one encoding");
 }
 
 // defineEvalConstant ---------------------------------------------------------
@@ -2767,7 +2822,7 @@ void ArchDesc::defineEvalConstant(FILE* fp, InstructForm& inst) {
                            ec_name, encoding->num_args());
     }
 
-    DefineEmitState pending(fp, *this, *encoding, *encode, inst);
+    DefineEmitState pending(fp, *this, *encoding, *encode, inst, "this");
     encoding->_code.reset();
     encoding->_rep_vars.reset();
     // Process list of user-defined strings,
@@ -3301,6 +3356,7 @@ void ArchDesc::defineClasses(FILE *fp) {
         define_postalloc_expand(fp, *instr);
       } else {
         defineEmit(fp, *instr);
+        defineStubEmit(fp, *instr);
       }
     }
     if (instr->is_mach_constant()) defineEvalConstant(fp, *instr);

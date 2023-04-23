@@ -99,6 +99,8 @@ public:
   char          *_size;                // Size of instruction
   InsEncode     *_insencode;           // Encoding class instruction belongs to
   InsEncode     *_constant;            // Encoding class constant value belongs to
+  char          *_stubmaxsize;
+  InsEncode     *_stubencode;
   bool           _is_postalloc_expand; // Indicates that encoding just does a lateExpand.
   Attribute     *_attribs;             // List of Attribute rules
   Predicate     *_predicate;           // Predicate test for this instruction

@@ -158,8 +158,9 @@ protected:
 
   Attribute     *attr_parse(char *ident);// Parse instr/operand attribute rule
   // Parse instruction encode rule
-  void           ins_encode_parse(InstructForm &inst);
-  void           ins_encode_parse_block(InstructForm &inst);
+  void           ins_encode_parse(InstructForm& inst);
+  void           stub_encode_parse(InstructForm& inst);
+  InsEncode     *ins_encode_parse_block(InstructForm& inst, const char* prefix, const char* prefix_code);
   void           ins_encode_parse_block_impl(InstructForm& inst, EncClass* encoding, char* ec_name);
   // Parse instruction postalloc expand rule.
   void           postalloc_expand_parse(InstructForm &inst);
@@ -168,7 +169,7 @@ protected:
   void           constant_parse_expression(EncClass* encoding, char* ec_name);
 
   Opcode        *opcode_parse(InstructForm *insr); // Parse instruction opcode
-  char          *size_parse(InstructForm *insr); // Parse instruction size
+  char          *size_parse(); // Parse instruction size
   Interface     *interface_parse();      // Parse operand interface rule
   Interface     *mem_interface_parse();  // Parse memory interface rule
   Interface     *cond_interface_parse(); // Parse conditional interface rule

@@ -2004,10 +2004,10 @@ void ArchDesc::declareClasses(FILE *fp) {
     fprintf(fp, "private:\n");
     fprintf(fp, "  const %sNode* _node;\n", instr->_ident);
     fprintf(fp, "  PhaseRegAlloc* ra_;\n");
+    fprintf(fp, "  MachOper* opnd_array(uint index) const { return _node->opnd_array(index); }\n");
     fprintf(fp, "public:\n");
     fprintf(fp, "  %sStub(const %sNode* node, PhaseRegAlloc* ra) : _node(node), ra_(ra) {}\n",
             instr->_ident, instr->_ident);
-    fprintf(fp, "  MachOper *opnd_array(uint index) const { return _node->opnd_array(index); }\n");
     fprintf(fp, "  int max_size() const { return %s; }\n", instr->_stubmaxsize);
     fprintf(fp, "  void emit(C2_MacroAssembler& masm);\n");
     fprintf(fp, "};\n\n");

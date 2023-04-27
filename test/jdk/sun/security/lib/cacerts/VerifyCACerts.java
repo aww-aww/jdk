@@ -211,7 +211,7 @@ public class VerifyCACerts {
             put("globalsigneccrootcar5 [jdk]",
                     "17:9F:BC:14:8A:3D:D0:0F:D2:4E:A1:34:58:CC:43:BF:A7:F5:9C:81:82:D7:83:A5:13:F6:EB:EC:10:0C:89:24");
             put("globalsigneccrootcar4 [jdk]",
-                    "BE:C9:49:11:C2:95:56:76:DB:6C:0A:55:09:86:D7:6E:3B:A0:05:66:7C:44:2C:97:62:B4:FB:B7:73:DE:22:8C");
+                    "B0:85:D7:0B:96:4F:19:1A:73:E4:AF:0D:54:AE:7A:0E:07:AA:FD:AF:9B:71:DD:08:62:13:8A:B7:32:5A:24:A2");
             put("teliasonerarootcav1 [jdk]",
                     "DD:69:36:FE:21:F8:F0:77:C1:23:A1:A5:21:C1:22:24:F7:22:55:B7:3E:03:A7:26:06:93:E8:A2:4B:0F:A3:89");
             put("globalsignrootcar6 [jdk]",
@@ -240,6 +240,14 @@ public class VerifyCACerts {
                     "44:B5:45:AA:8A:25:E6:5A:73:CA:15:DC:27:FC:36:D2:4C:1C:B9:95:3A:06:65:39:B1:15:82:DC:48:7B:48:33");
             put("certignaca [jdk]",
                     "E3:B6:A2:DB:2E:D7:CE:48:84:2F:7A:C5:32:41:C7:B7:1D:54:14:4B:FB:40:C1:1F:3F:1D:0B:42:F5:EE:A1:2D");
+            put("gtsrootcar1 [jdk]",
+                    "D9:47:43:2A:BD:E7:B7:FA:90:FC:2E:6b:59:10:1B:12:80:E0:E1:C7:E4:E4:0F:A3:C6:88:7F:FF:57:A7:f4:CF");
+            put("gtsrootcar2 [jdk]",
+                    "8D:25:CD:97:22:9B:BF:70:35:6B:DA:4E:B3:CC:73:40:31:E2:4C:F0:0F:AF:CF:D3:2D:C7:6E:B5:84:1C:7E:A8");
+            put("gtsrootecccar3 [jdk]",
+                    "34:D8:A7:3E:E2:08:D9:BC:DB:0D:95:65:20:93:4B:4E:40:E6:94:82:59:6E:8B:6F:73:C8:42:6B:01:0A:6F:48");
+            put("gtsrootecccar4 [jdk]",
+                    "34:9D:FA:40:58:C5:E2:63:12:3B:39:8A:E7:95:57:3C:4E:13:13:C8:3F:E6:8F:93:55:6C:D5:E8:03:1B:3C:7D");
         }
     };
 
